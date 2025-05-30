@@ -1,0 +1,7 @@
+*.gpkg
+files copy/
+scraping/
+.Rhistory
+*.pdf
+*.txt
+*.zip

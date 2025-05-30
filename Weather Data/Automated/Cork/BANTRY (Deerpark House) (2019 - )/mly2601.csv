@@ -1,0 +1,27 @@
+Station Name: BANTRY (Deerpark House)
+Station Height: 35 M 
+Latitude:51.670  ,Longitude: -9.471
+
+
+year:  -  Year
+month: -  Month
+rain:  -  Precipitation Amount (mm)
+gdf:   -  Greatest daily fall (mm)
+rd:    -  Number of rain days (0.2mm or more)
+wd:    -  Number of wet days (1.0 mm or more)	
+ind:   -  Indicator
+
+year,month,ind,rain,gdf,rd,wd
+2019,6,0,90.3,21.1,14,11
+2019,7,0,58.9,9.6,16,11
+2019,8,0,200.2,52.6,27,21
+2019,9,0,119.3,21.1,22,17
+2019,12,0,185.6,24.5,25,23
+2020,1,0,102.9,12.3,25,20
+2020,3,0,150.1,20.6,19,17
+2020,4,0,52.1,15.4,11,8
+2020,5,0,78.0,34.5,12,8
+2020,6,0,107.5,29.3,13,11
+2020,7,0,157.6,40.4,17,14
+2020,8,0,292.7,55.9,21,17
+2020,11,0,146.3,28.9,19,18

@@ -1,0 +1,108 @@
+---
+title: "Dissertation"
+format: pdf
+editor: visual
+---
+
+```{r}
+library(ggplot2)
+library(tidyverse)
+library(stringr)
+library(sf)
+library(leaflet)
+```
+
+```{r}
+mortality_data = read_csv("./Mortality Rates/G0315.20250422005741.csv")
+```
+
+```{r}
+data1 = st_read("Counties/Administrative_Areas___OSi_National_Statutory_Boundaries_-8533217114695782979.gpkg")
+
+data2 = st_read("Counties/ConstituencyBoundariesUngeneralised_National_Electoral_Boundaries_2023_-8938782445893566072.gpkg")
+
+data3 = st_read("Counties/Counties___OSi_National_Statutory_Boundaries___Generalised_20m_-4825998278637659254.gpkg")
+```
+
+```{r}
+test = as.data.frame(data2)
+
+test = test |>
+  filter(ENG_NAME_VALUE %in% c("Tipperary North (3)", "Tipperary South (3)","Limerick City (4)","Limerick County (3)")) |>
+  select(ENG_NAME_VALUE, SHAPE)
+
+test[1,"ENG_NAME_VALUE"] = "Limerick County" 
+test[2,"ENG_NAME_VALUE"] = "North Tipperary"
+test[3,"ENG_NAME_VALUE"] = "South Tipperary"
+test[4,"ENG_NAME_VALUE"] = "Limerick City"
+
+names(test) = c("ENGLISH","SHAPE")
+
+test
+```
+
+```{r}
+test2 = as.data.frame(data1)
+test2$ENGLISH = gsub("COUNCIL", "", test2$ENGLISH)
+test2 = test2 |>
+  filter(COUNTY == "DUBLIN" | COUNTY == "CORK" | COUNTY == "GALWAY") |>
+  select(ENGLISH, SHAPE) |>
+  mutate(ENGLISH = str_trim(str_to_title(ENGLISH)))
+
+test2[4, "ENGLISH"] = "South Dublin"
+test2[5, "ENGLISH"] = "Fingal"
+test2[6, "ENGLISH"] = "Dun Laoghaire-Rathdown"
+
+test2
+```
+
+```{r}
+test3 = as.data.frame(data3)
+test3 = test3 |>
+  filter(!(ENGLISH %in% c("DUBLIN", "LIMERICK", "CORK","GALWAY"))) |>
+  select(ENGLISH, SHAPE) |>
+  mutate(ENGLISH = str_to_title(ENGLISH))
+test3
+```
+
+```{r}
+mortality_data = mortality_data |>
+  select(`Area of Residence`, VALUE, Year, `ICD 10 Diagnostic Group`)
+```
+
+```{r}
+mod_data = bind_rows(test,test2,test3)
+names(mod_data) = c("Area of Residence", "SHAPE")
+mod_data$x = seq(1:nrow(mod_data))
+
+final_df <- mortality_data %>% 
+  left_join(mod_data, by = "Area of Residence")
+
+final_df |>
+  filter(`Area of Residence` == "Waterford County")
+final_df <- na.omit(final_df)
+
+final_df = st_as_sf(final_df |> select(-x))
+final_df = st_transform(final_df, 4326)
+
+
+#uncomment below to save the shapefile if running for the first time
+#st_write(final_df, "Counties/shapefiles/shapefile.shp")
+
+plt = final_df |>
+  filter(Year == 2014 & `ICD 10 Diagnostic Group` == "Diseases of the circulatory system")
+```
+
+```{r}
+plt = st_as_sf(plt)
+plt <- st_transform(plt, 4326)
+```
+
+```{r}
+pal <- colorNumeric(palette = "YlOrRd", domain = plt$VALUE)
+l <- leaflet(plt) %>% addTiles() %>%
+  addPolygons(color = "white", fillColor = ~ pal(VALUE),
+              fillOpacity = 0.8) %>%
+  addLegend(pal = pal, values = ~VALUE, opacity = 0.8)
+l
+```

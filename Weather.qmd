@@ -1,0 +1,80 @@
+---
+title: "Weather"
+format: html
+editor: visual
+---
+
+```{r}
+library(ggplot2)
+library(tidyverse)
+library(stringr)
+library(sf)
+library(leaflet)
+library(viridis)
+```
+
+```{r}
+data = read_csv("Weather Data/weather_data_complete.csv")
+
+
+data_filtered = data |>
+  filter(year > 2000) |>
+  group_by(year, AreaOfResidence) |>
+  summarise(`Precipitation Amount` = sum(rain, na.rm = TRUE),
+            `Greatest daily fall` = max(gdf, na.rm = TRUE),
+            `Number of rain days` = sum(rd, na.rm = TRUE),
+            `Number of wet days` = sum(wd, na.rm = TRUE),
+            `Mean Air Temperature` = mean(meant, na.rm = TRUE),
+            `Maximum Air Temperature` = max(maxtp, na.rm = TRUE),
+            `Minimum Air Temperature` = min(mintp, na.rm = TRUE),
+            `Mean Maximum Temperature` = mean(mnmax, na.rm = TRUE),
+            `Mean Minimum Temperature` = mean(mnmin, na.rm = TRUE),
+            `Grass Minimum Temperature` = min(gmin, na.rm = TRUE),
+            `Mean Wind Speed (Knot)` = mean(wdsp, na.rm = TRUE),
+            `Highest Gust` = max(maxgt, na.rm = TRUE),
+            `Sunshine Duration` = sum(sun, na.rm = TRUE),
+            Latitude = first(Latitude),
+            Longitude = first(Longitude)) |>
+  pivot_longer(
+    cols = c(`Precipitation Amount`,
+              `Greatest daily fall`,
+              `Number of rain days`,
+              `Number of wet days`,
+              `Mean Air Temperature`,
+              `Maximum Air Temperature`,
+              `Minimum Air Temperature`,
+              `Mean Maximum Temperature`,
+              `Mean Minimum Temperature`,
+              `Grass Minimum Temperature`,
+              `Mean Wind Speed (Knot)`,
+              `Highest Gust`,
+              `Sunshine Duration`),
+    names_to = "parameter",
+    values_to = "value"
+  )
+
+data_filtered$value = ifelse(is.infinite(data_filtered$value), 0, data_filtered$value)
+write_csv(data_filtered, "./Weather Data/weather_data_long_clean.csv")
+
+
+data_filtered |>
+  filter(parameter == "Minimum Air Temperature")
+```
+
+```{r}
+dsf <- st_as_sf(data_filtered, coords = c("Longitude", "Latitude"))
+st_crs(dsf) <- 4326
+
+dsf = dsf |>
+  filter(year == 2006)
+```
+
+```{r}
+pal <- colorNumeric(palette = "viridis", domain = dsf$rain)
+leaflet(dsf) %>% addTiles() %>%
+  addCircles(lng = st_coordinates(dsf)[, 1],
+             lat = st_coordinates(dsf)[, 2],
+             radius = ~sqrt(rain)*100,
+             color = ~pal(rain), popup = ~AreaOfResidence) %>%
+  addLegend(pal = pal, values = ~rain, position = "bottomright")
+```

@@ -1,0 +1,94 @@
+---
+title: "Dissertation"
+format: pdf
+editor: visual
+---
+
+```{r}
+library(ggplot2)
+library(tidyverse)
+library(stringr)
+library(sf)
+library(leaflet)
+library(fs)
+```
+
+```{r}
+base_dir <- "Weather Data/Automated"
+download_dir <- "C:/Users/Admin/Downloads"
+```
+
+```{r}
+station_details = read_csv("scraping/downloaded_data_log.csv")
+
+zip_files <- list.files(download_dir, pattern = "\\.zip$", full.names = TRUE)
+zip_info <- file.info(zip_files)
+ordered_zips <- zip_files[order(zip_info$mtime)]  # Oldest first
+
+station_details$current_path = ordered_zips
+```
+
+```{r}
+#!!!!!!!!RUN ONLY ONCE. FIRST TIME ONLY!!!!!!!
+#counties = unique(station_details$County)
+#count = 1
+
+#for(c in counties){
+#  county_path <- file.path(base_dir, c)
+#  dir.create(county_path, recursive = TRUE, showWarnings = FALSE)
+
+#  stations = station_details |>
+#    filter(County == c) |>
+#    select(Station)
+#  
+#  for(station in stations$Station){
+#    station_path <- file.path(county_path, station)
+#    dir.create(station_path, showWarnings = FALSE)
+#    file_move(station_details$current_path[count], station_path)
+#    count = count + 1
+#  }
+#}
+```
+
+```{r}
+#!!!!!!!!!!!!RUN ONLY ONCE!!!!!!!!!!!!!!!!!
+#zip_files <- list.files(base_dir, pattern = "\\.zip$", full.names = TRUE, recursive = TRUE)
+
+#walk(zip_files, function(zip_path) {
+#  unzip(zipfile = zip_path, exdir = dirname(zip_path))
+#  # file.remove(zip_path)
+#})
+```
+
+```{r}
+# Function to read and process one file
+process_file <- function(file_path) {
+  
+  # Read the first few lines
+  lines <- readLines(file_path, n = 20)
+  
+  # Extract station name (adjust indexing if needed)
+  station_line <- lines[1]
+  station_name <- str_trim(str_split(station_line, ":")[[1]][2])
+  
+  latlog_line <- lines[3]
+  latitude <- as.numeric(str_split(str_trim(str_split(latlog_line,",")[[1]][1]),":")[[1]][2])
+  longitude <- as.numeric(str_split(str_trim(str_split(latlog_line,",")[[1]][2]),":")[[1]][2])
+  
+  # Find where the header starts
+  header_row <- which(str_detect(lines, "year"))[2]
+  
+  # Read the actual data
+  df <- read_csv(file_path, skip = header_row - 1) |>
+    mutate(AreaOfResidence = station_name, Latitude = latitude, Longitude = longitude)
+  
+  return(df)
+}
+
+all_files <- list.files(base_dir, pattern = "\\.csv$", full.names = TRUE, recursive = TRUE)
+# Use purrr::map to apply the function to all files
+final_weather_data <- map_dfr(all_files, process_file)
+
+# Save if needed
+write_csv(final_weather_data, "Weather Data/weather_data_complete.csv")
+```
