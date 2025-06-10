@@ -11,54 +11,62 @@ library(stringr)
 library(sf)
 library(leaflet)
 library(viridis)
+library(mgcv)
+library(terra)
+library(raster)
+library(rnaturalearth)
+library(INLA)
 ```
 
 ```{r}
 data = read_csv("Weather Data/weather_data_complete.csv")
 
+test = data |>
+  filter(sun != 0 & year == 2025)
 
-data_filtered = data |>
+unique(test$AreaOfResidence)
+```
+
+```{r}
+safe_sum <- function(x) {
+  if (all(is.na(x))) {
+    return(NA_real_)
+  } else {
+    return(sum(x, na.rm = TRUE))
+  }
+}
+
+data_filtered <- data |>
   filter(year > 2000) |>
   group_by(year, AreaOfResidence) |>
-  summarise(`Precipitation Amount` = sum(rain, na.rm = TRUE),
-            `Greatest daily fall` = max(gdf, na.rm = TRUE),
-            `Number of rain days` = sum(rd, na.rm = TRUE),
-            `Number of wet days` = sum(wd, na.rm = TRUE),
-            `Mean Air Temperature` = mean(meant, na.rm = TRUE),
-            `Maximum Air Temperature` = max(maxtp, na.rm = TRUE),
-            `Minimum Air Temperature` = min(mintp, na.rm = TRUE),
-            `Mean Maximum Temperature` = mean(mnmax, na.rm = TRUE),
-            `Mean Minimum Temperature` = mean(mnmin, na.rm = TRUE),
-            `Grass Minimum Temperature` = min(gmin, na.rm = TRUE),
-            `Mean Wind Speed (Knot)` = mean(wdsp, na.rm = TRUE),
-            `Highest Gust` = max(maxgt, na.rm = TRUE),
-            `Sunshine Duration` = sum(sun, na.rm = TRUE),
-            Latitude = first(Latitude),
-            Longitude = first(Longitude)) |>
+  summarise(
+    `Precipitation Amount` = safe_sum(rain),
+    `Greatest daily fall` = if (all(is.na(gdf))) NA_real_ else max(gdf, na.rm = TRUE),
+    `Number of rain days` = safe_sum(rd),
+    `Number of wet days` = safe_sum(wd),
+    `Mean Air Temperature` = mean(meant, na.rm = TRUE),
+    `Maximum Air Temperature` = if (all(is.na(maxtp))) NA_real_ else max(maxtp, na.rm = TRUE),
+    `Minimum Air Temperature` = if (all(is.na(mintp))) NA_real_ else min(mintp, na.rm = TRUE),
+    `Mean Maximum Temperature` = mean(mnmax, na.rm = TRUE),
+    `Mean Minimum Temperature` = mean(mnmin, na.rm = TRUE),
+    `Grass Minimum Temperature` = if (all(is.na(gmin))) NA_real_ else min(gmin, na.rm = TRUE),
+    `Mean Wind Speed` = mean(wdsp, na.rm = TRUE),
+    `Highest Gust` = if (all(is.na(maxgt))) NA_real_ else max(maxgt, na.rm = TRUE),
+    `Sunshine Duration` = safe_sum(sun),
+    Latitude = first(Latitude),
+    Longitude = first(Longitude),
+    .groups = "drop"
+  ) |>
   pivot_longer(
-    cols = c(`Precipitation Amount`,
-              `Greatest daily fall`,
-              `Number of rain days`,
-              `Number of wet days`,
-              `Mean Air Temperature`,
-              `Maximum Air Temperature`,
-              `Minimum Air Temperature`,
-              `Mean Maximum Temperature`,
-              `Mean Minimum Temperature`,
-              `Grass Minimum Temperature`,
-              `Mean Wind Speed (Knot)`,
-              `Highest Gust`,
-              `Sunshine Duration`),
+    cols = -c(year, AreaOfResidence, Latitude, Longitude),
     names_to = "parameter",
     values_to = "value"
-  )
-
-data_filtered$value = ifelse(is.infinite(data_filtered$value), 0, data_filtered$value)
-write_csv(data_filtered, "./Weather Data/weather_data_long_clean.csv")
-
+  ) |>
+  filter(!is.na(value) & !is.infinite(value))
 
 data_filtered |>
-  filter(parameter == "Minimum Air Temperature")
+  filter(value == 0)
+write_csv(data_filtered, "./Weather Data/weather_data_long_clean.csv")
 ```
 
 ```{r}
@@ -67,14 +75,146 @@ st_crs(dsf) <- 4326
 
 dsf = dsf |>
   filter(year == 2006)
+
+dsf = dsf |>
+  filter(parameter == "Number of rain days")
+
+dsf
 ```
 
 ```{r}
-pal <- colorNumeric(palette = "viridis", domain = dsf$rain)
+pal <- colorNumeric(palette = "viridis", domain = dsf$value)
 leaflet(dsf) %>% addTiles() %>%
   addCircles(lng = st_coordinates(dsf)[, 1],
              lat = st_coordinates(dsf)[, 2],
-             radius = ~sqrt(rain)*100,
-             color = ~pal(rain), popup = ~AreaOfResidence) %>%
-  addLegend(pal = pal, values = ~rain, position = "bottomright")
+             radius = ~sqrt(value)*100,
+             color = ~pal(value), popup = ~AreaOfResidence) %>%
+  addLegend(pal = pal, values = ~value, position = "bottomright")
+```
+
+FDAPDE:
+
+```{r}
+years = unique(data_filtered$year)
+params = unique(data_filtered$parameter)
+
+if(!dir.exists("models")) dir.create("models")
+if(!dir.exists("models/fdapde")) dir.create("models/fdapde")
+
+ireland = st_read("Counties/shapefiles/ireland_boundary.shp")
+
+grid_low_res <- expand.grid(Longitude = seq(-11, -6, len = 30), Latitude = seq(51, 56, len = 30))
+grid_low_res_sf <- grid_sf <- st_as_sf(grid_low_res, coords = c("Longitude", "Latitude"), crs = 4326)
+grid_low_res_filtered <- grid_low_res_sf[st_within(grid_low_res_sf, ireland, sparse = FALSE), ]
+grid_low_res_filtered_df <- grid_low_res_filtered |>
+  sf::st_coordinates() |>
+  as.data.frame() |>
+  setNames(c("Longitude", "Latitude"))
+
+grid_high_res <- expand.grid(Longitude = seq(-11, -6, by = 0.01), Latitude = seq(51, 56, by = 0.01))
+grid_high_res_sf <- st_as_sf(grid_high_res, coords = c("Longitude", "Latitude"), crs = 4326)
+grid_high_res_filtered <- grid_high_res_sf[st_within(grid_high_res_sf, ireland, sparse = FALSE), ]
+grid_high_res_filtered_df <- grid_high_res_filtered |>
+  sf::st_coordinates() |>
+  as.data.frame() |>
+  setNames(c("Longitude", "Latitude"))
+
+#for (yr in years) {
+#  for (param in params) {
+    fdapde_data = data_filtered |>
+      filter(parameter == "Number of rain days" & year == 2006)
+    
+    fdapde_variates = fdapde_data |>
+      dplyr::select(Longitude, Latitude) |>
+      as.matrix()
+    
+    fdapde_response = fdapde_data$value
+    
+    tri_mesh <- fdaPDE::create.mesh.2D(nodes = grid_low_res_filtered_df, order = 1)
+    FEM_basis <- fdaPDE::create.FEM.basis(tri_mesh)
+    
+    plot(tri_mesh, main = "Mesh with Observation Points")
+    points(fdapde_variates, col = "red", pch = 20)
+    
+    FEM_fit <- fdaPDE::smooth.FEM(fdapde_variates, 
+                                  fdapde_response, 
+                                  FEM_basis, lambda = 10^(-6:6),
+                                  DOF.evaluation = 'exact', 
+                                  lambda.selection.lossfunction = 'GCV')
+    
+    FEM_zfit <- fdaPDE::eval.FEM(FEM_fit$fit.FEM, as.matrix(grid_high_res_filtered_df))
+    
+    grid_high_res_filtered_df$value = FEM_zfit
+    
+    r <- rast(grid_high_res_filtered_df[, c("Longitude", "Latitude", "value")], type="xyz")
+    crs(r) <- "EPSG:4326"
+#    saveRDS(r, paste0("models/fdapde/", param, "_", yr, "_rastor.rds"))
+#  }
+#}
+
+print("done!")
+```
+
+```{r}
+rb <- raster::brick(r)
+        contours <- rasterToContour(rb, levels = pretty(range(values(rb), na.rm = TRUE), n = 10))
+        contours_sf <- st_as_sf(contours)
+        
+        pal <- colorNumeric("viridis", values(r),
+                            na.color = "transparent")
+        leaflet() %>% addTiles() %>%
+          addRasterImage(rb, colors = pal, opacity = 0.8) %>%
+          addPolylines(data = contours_sf, color = "black", weight = 1, opacity = 0.7) %>%
+          addLegend(pal = pal, values = values(r), title = "input$parameter")
+```
+
+```{r}
+grid_low_res <- expand.grid(Longitude = seq(-11, -6, by = 0.1), Latitude = seq(51, 56, by = 0.1))
+grid_high_res <- expand.grid(Longitude = seq(-11, -6, by = 0.01), Latitude = seq(51, 56, by = 0.01))
+grid_high_res_sf <- st_as_sf(grid_high_res, coords = c("Longitude", "Latitude"), crs = 4326)
+grid_high_res_filtered <- grid_high_res_sf[st_within(grid_high_res_sf, ireland, sparse = FALSE), ]
+grid_high_res_filtered_df <- grid_high_res_filtered |>
+  sf::st_coordinates() |>
+  as.data.frame() |>
+  setNames(c("Longitude", "Latitude"))
+
+tri_mesh <- fdaPDE::create.mesh.2D(grid_low_res, order = 1)
+FEM_basis <- fdaPDE::create.FEM.basis(tri_mesh)
+
+fdapde_data = data_filtered |>
+      filter(parameter == "Mean Maximum Temperature" & year >= 2001 & year <= 2005)
+    
+fdapde_variates = fdapde_data |>
+  dplyr::select(Longitude, Latitude) |>
+  as.matrix()
+
+fdapde_response = fdapde_data$value
+
+plot(tri_mesh, main = "Mesh with Observation Points")
+points(fdapde_variates, col = "red", pch = 20)
+
+FEM_fit <- fdaPDE::smooth.FEM(fdapde_variates, 
+                                  fdapde_response, 
+                                  FEM_basis, lambda = 10^(-6:6),
+                                  DOF.evaluation = 'exact', 
+                                  lambda.selection.lossfunction = 'GCV')
+
+FEM_zfit <- fdaPDE::eval.FEM(FEM_fit$fit.FEM, as.matrix(grid_high_res_filtered_df[,c("Longitude", "Latitude")]))
+grid_high_res_filtered_df$value = FEM_zfit
+
+r <- rast(grid_high_res_filtered_df[, c("Longitude", "Latitude", "value")], type="xyz")
+crs(r) <- "EPSG:4326"
+```
+
+```{r}
+rb <- raster::brick(r)
+        contours <- rasterToContour(rb, levels = pretty(range(values(rb), na.rm = TRUE), n = 10))
+        contours_sf <- st_as_sf(contours)
+        
+        pal <- colorNumeric("viridis", values(r),
+                            na.color = "transparent")
+        leaflet() %>% addTiles() %>%
+          addRasterImage(rb, colors = pal, opacity = 0.8) %>%
+          addPolylines(data = contours_sf, color = "black", weight = 1, opacity = 0.7) %>%
+          addLegend(pal = pal, values = values(r), title = "input$parameter")
 ```
