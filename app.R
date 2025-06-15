@@ -110,8 +110,8 @@ server = function(input, output, session) {
         r = readRDS(file = paste0("rastors/gam/", input$parameter,"_", (input$year2),"_rastor.rds"))
         return(r)
       } else if(input$model == "FDAPDE") {
-        print(paste0("models/fdapde/", input$parameter,"_", input$year2,"_rastor.rds"))
-        r = readRDS(file = paste0("models/fdapde/", input$parameter,"_", input$year2,"_rastor.rds"))
+        print("FDAPDE")
+        r = readRDS(file = paste0("rastors/fdapde/", input$parameter,"_", input$year2,"_rastor.rds"))
         return(r)
       } else if(input$model == "INLA") {
         print("INLA")

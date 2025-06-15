@@ -7762,7 +7762,7 @@ year,AreaOfResidence,Latitude,Longitude,parameter,value
 2006,MOYARD (Shanbolard),53.562,-10.058,Number of Wet Days,193
 2006,MOYARD (Shanbolard),53.562,-10.058,Precipitation Amount,1484.4
 2006,MT DILLON,53.727,-7.981,Precipitation Amount,1119.2
-2006,MT DILLON,54.72694444444445,-9.901111111111112,Mean Temperature,51.056
+2006,MT DILLON,53.72694,-7.98083,Mean Temperature,51.056
 2006,MULLAGH (Carrowlagan),52.798,-9.401,Greatest Daily Fall,40
 2006,MULLAGH (Carrowlagan),52.798,-9.401,Number of Rain Days,224
 2006,MULLAGH (Carrowlagan),52.798,-9.401,Number of Wet Days,185
@@ -9175,7 +9175,7 @@ year,AreaOfResidence,Latitude,Longitude,parameter,value
 2007,MOYARD (Shanbolard),53.562,-10.058,Number of Wet Days,178
 2007,MOYARD (Shanbolard),53.562,-10.058,Precipitation Amount,1301.4
 2007,MT DILLON,53.727,-7.981,Precipitation Amount,971.5
-2007,MT DILLON,54.72694444444445,-9.901111111111112,Mean Temperature,135.279
+2007,MT DILLON,53.72694,-7.98083,Mean Temperature,135.279
 2007,MULLAGH (Carrowlagan),52.798,-9.401,Greatest Daily Fall,42.3
 2007,MULLAGH (Carrowlagan),52.798,-9.401,Number of Rain Days,223
 2007,MULLAGH (Carrowlagan),52.798,-9.401,Number of Wet Days,176
@@ -10599,7 +10599,7 @@ year,AreaOfResidence,Latitude,Longitude,parameter,value
 2008,MOYARD (Shanbolard),53.562,-10.058,Number of Wet Days,221
 2008,MOYARD (Shanbolard),53.562,-10.058,Precipitation Amount,1608
 2008,MT DILLON,53.727,-7.981,Precipitation Amount,1118.3
-2008,MT DILLON,54.72694444444445,-9.901111111111112,Mean Temperature,106.379
+2008,MT DILLON,53.72694,-7.98083,Mean Temperature,106.379
 2008,MULLAGH (Carrowlagan),52.798,-9.401,Greatest Daily Fall,35
 2008,MULLAGH (Carrowlagan),52.798,-9.401,Number of Rain Days,252
 2008,MULLAGH (Carrowlagan),52.798,-9.401,Number of Wet Days,215
@@ -12031,7 +12031,7 @@ year,AreaOfResidence,Latitude,Longitude,parameter,value
 2009,MOYARD (Shanbolard),53.562,-10.058,Number of Wet Days,215
 2009,MOYARD (Shanbolard),53.562,-10.058,Precipitation Amount,1585.2
 2009,MT DILLON,53.727,-7.981,Precipitation Amount,1261.2
-2009,MT DILLON,54.72694444444445,-9.901111111111112,Mean Temperature,91.24
+2009,MT DILLON,53.72694,-7.98083,Mean Temperature,91.24
 2009,MULLAGH (Carrowlagan),52.798,-9.401,Greatest Daily Fall,38.7
 2009,MULLAGH (Carrowlagan),52.798,-9.401,Number of Rain Days,256
 2009,MULLAGH (Carrowlagan),52.798,-9.401,Number of Wet Days,207
@@ -13510,7 +13510,7 @@ year,AreaOfResidence,Latitude,Longitude,parameter,value
 2010,MOYARD (Shanbolard),53.562,-10.058,Number of Wet Days,167
 2010,MOYARD (Shanbolard),53.562,-10.058,Precipitation Amount,1125.3
 2010,MT DILLON,53.727,-7.981,Precipitation Amount,850
-2010,MT DILLON,54.72694444444445,-9.901111111111112,Mean Temperature,58.351
+2010,MT DILLON,53.72694,-7.98083,Mean Temperature,58.351
 2010,MULLAGH (Carrowlagan),52.798,-9.401,Greatest Daily Fall,40.7
 2010,MULLAGH (Carrowlagan),52.798,-9.401,Number of Rain Days,206
 2010,MULLAGH (Carrowlagan),52.798,-9.401,Number of Wet Days,152
@@ -18095,7 +18095,7 @@ year,AreaOfResidence,Latitude,Longitude,parameter,value
 2013,MOYCULLEN (Loughwell),53.307,-9.227,Number of Wet Days,135
 2013,MOYCULLEN (Loughwell),53.307,-9.227,Precipitation Amount,719.9
 2013,MT DILLON,53.727,-7.981,Precipitation Amount,935.3
-2013,MT DILLON,54.72694444444445,-9.901111111111112,Mean Temperature,94.532
+2013,MT DILLON,53.72694,-7.98083,Mean Temperature,94.532
 2013,MULLAGH (Carrowlagan),52.798,-9.401,Greatest Daily Fall,35.7
 2013,MULLAGH (Carrowlagan),52.798,-9.401,Number of Rain Days,238
 2013,MULLAGH (Carrowlagan),52.798,-9.401,Number of Wet Days,189
@@ -19775,7 +19775,7 @@ year,AreaOfResidence,Latitude,Longitude,parameter,value
 2014,MOYCULLEN (Loughwell),53.307,-9.227,Number of Wet Days,226
 2014,MOYCULLEN (Loughwell),53.307,-9.227,Precipitation Amount,1701.2
 2014,MT DILLON,53.727,-7.981,Precipitation Amount,1085
-2014,MT DILLON,54.72694444444445,-9.901111111111112,Mean Temperature,99.383
+2014,MT DILLON,53.72694,-7.98083,Mean Temperature,99.383
 2014,MULLAGH (Carrowlagan),52.798,-9.401,Greatest Daily Fall,35.7
 2014,MULLAGH (Carrowlagan),52.798,-9.401,Number of Rain Days,258
 2014,MULLAGH (Carrowlagan),52.798,-9.401,Number of Wet Days,219
@@ -21481,7 +21481,7 @@ year,AreaOfResidence,Latitude,Longitude,parameter,value
 2015,MOYCULLEN (Loughwell),53.307,-9.227,Number of Wet Days,226
 2015,MOYCULLEN (Loughwell),53.307,-9.227,Precipitation Amount,2181.1
 2015,MT DILLON,53.727,-7.981,Precipitation Amount,1339.3
-2015,MT DILLON,54.72694444444445,-9.901111111111112,Mean Temperature,93.481
+2015,MT DILLON,53.72694,-7.98083,Mean Temperature,93.481
 2015,MULLAGH (Carrowlagan),52.798,-9.401,Greatest Daily Fall,83.4
 2015,MULLAGH (Carrowlagan),52.798,-9.401,Number of Rain Days,251
 2015,MULLAGH (Carrowlagan),52.798,-9.401,Number of Wet Days,207
@@ -23199,7 +23199,7 @@ year,AreaOfResidence,Latitude,Longitude,parameter,value
 2016,MOYCULLEN (Loughwell),53.307,-9.227,Number of Wet Days,204
 2016,MOYCULLEN (Loughwell),53.307,-9.227,Precipitation Amount,1550.5
 2016,MT DILLON,53.727,-7.981,Precipitation Amount,1011.1
-2016,MT DILLON,54.72694444444445,-9.901111111111112,Mean Temperature,96.743
+2016,MT DILLON,53.72694,-7.98083,Mean Temperature,96.743
 2016,MULLAGH (Carrowlagan),52.798,-9.401,Greatest Daily Fall,37.6
 2016,MULLAGH (Carrowlagan),52.798,-9.401,Number of Rain Days,236
 2016,MULLAGH (Carrowlagan),52.798,-9.401,Number of Wet Days,185
@@ -24928,7 +24928,7 @@ year,AreaOfResidence,Latitude,Longitude,parameter,value
 2017,MOYCULLEN (Loughwell),53.307,-9.227,Number of Wet Days,232
 2017,MOYCULLEN (Loughwell),53.307,-9.227,Precipitation Amount,1862.4
 2017,MT DILLON,53.727,-7.981,Precipitation Amount,991.7
-2017,MT DILLON,54.72694444444445,-9.901111111111112,Mean Temperature,99.301
+2017,MT DILLON,53.72694,-7.98083,Mean Temperature,99.301
 2017,MULLAGH (Carrowlagan),52.798,-9.401,Greatest Daily Fall,53.4
 2017,MULLAGH (Carrowlagan),52.798,-9.401,Number of Rain Days,264
 2017,MULLAGH (Carrowlagan),52.798,-9.401,Number of Wet Days,214
@@ -26660,7 +26660,7 @@ year,AreaOfResidence,Latitude,Longitude,parameter,value
 2018,MOYCULLEN (Loughwell),53.307,-9.227,Number of Wet Days,205
 2018,MOYCULLEN (Loughwell),53.307,-9.227,Precipitation Amount,1659.7
 2018,MT DILLON,53.727,-7.981,Precipitation Amount,964.6
-2018,MT DILLON,54.72694444444445,-9.901111111111112,Mean Temperature,97.063
+2018,MT DILLON,53.72694,-7.98083,Mean Temperature,97.063
 2018,MULLAGH (Carrowlagan),52.798,-9.401,Greatest Daily Fall,31.1
 2018,MULLAGH (Carrowlagan),52.798,-9.401,Number of Rain Days,242
 2018,MULLAGH (Carrowlagan),52.798,-9.401,Number of Wet Days,189
@@ -28384,7 +28384,7 @@ year,AreaOfResidence,Latitude,Longitude,parameter,value
 2019,MOYCULLEN (Loughwell),53.307,-9.227,Number of Wet Days,216
 2019,MOYCULLEN (Loughwell),53.307,-9.227,Precipitation Amount,1843.5
 2019,MT DILLON,53.727,-7.981,Precipitation Amount,1181
-2019,MT DILLON,54.72694444444445,-9.901111111111112,Mean Temperature,99.088
+2019,MT DILLON,53.72694,-7.98083,Mean Temperature,99.088
 2019,MULLAGH (Carrowlagan),52.798,-9.401,Greatest Daily Fall,37.8
 2019,MULLAGH (Carrowlagan),52.798,-9.401,Number of Rain Days,252
 2019,MULLAGH (Carrowlagan),52.798,-9.401,Number of Wet Days,207
@@ -30095,7 +30095,7 @@ year,AreaOfResidence,Latitude,Longitude,parameter,value
 2020,MOYCULLEN (Loughwell),53.307,-9.227,Number of Wet Days,213
 2020,MOYCULLEN (Loughwell),53.307,-9.227,Precipitation Amount,2188
 2020,MT DILLON,53.727,-7.981,Precipitation Amount,1257.5
-2020,MT DILLON,54.72694444444445,-9.901111111111112,Mean Temperature,98.713
+2020,MT DILLON,53.72694,-7.98083,Mean Temperature,98.713
 2020,MULLAGH (Carrowlagan),52.798,-9.401,Greatest Daily Fall,44.6
 2020,MULLAGH (Carrowlagan),52.798,-9.401,Number of Rain Days,248
 2020,MULLAGH (Carrowlagan),52.798,-9.401,Number of Wet Days,200
@@ -31780,7 +31780,7 @@ year,AreaOfResidence,Latitude,Longitude,parameter,value
 2021,MOYCULLEN (Loughwell),53.307,-9.227,Number of Wet Days,195
 2021,MOYCULLEN (Loughwell),53.307,-9.227,Precipitation Amount,1608.3
 2021,MT DILLON,53.727,-7.981,Precipitation Amount,1016
-2021,MT DILLON,54.72694444444445,-9.901111111111112,Mean Temperature,101.649
+2021,MT DILLON,53.72694,-7.98083,Mean Temperature,101.649
 2021,MULLAGH (Carrowlagan),52.798,-9.401,Greatest Daily Fall,21.7
 2021,MULLAGH (Carrowlagan),52.798,-9.401,Number of Rain Days,235
 2021,MULLAGH (Carrowlagan),52.798,-9.401,Number of Wet Days,189
@@ -33427,7 +33427,7 @@ year,AreaOfResidence,Latitude,Longitude,parameter,value
 2022,MOYCULLEN (Loughwell),53.307,-9.227,Number of Wet Days,201
 2022,MOYCULLEN (Loughwell),53.307,-9.227,Precipitation Amount,1703.2
 2022,MT DILLON,53.727,-7.981,Precipitation Amount,1061.3
-2022,MT DILLON,54.72694444444445,-9.901111111111112,Mean Temperature,101.318
+2022,MT DILLON,53.72694,-7.98083,Mean Temperature,101.318
 2022,MULLAGH (Carrowlagan),52.798,-9.401,Greatest Daily Fall,34.1
 2022,MULLAGH (Carrowlagan),52.798,-9.401,Number of Rain Days,228
 2022,MULLAGH (Carrowlagan),52.798,-9.401,Number of Wet Days,184
@@ -35010,7 +35010,7 @@ year,AreaOfResidence,Latitude,Longitude,parameter,value
 2023,MOYCULLEN (Loughwell),53.307,-9.227,Number of Wet Days,230
 2023,MOYCULLEN (Loughwell),53.307,-9.227,Precipitation Amount,2039.1
 2023,MT DILLON,53.727,-7.981,Precipitation Amount,1337.1
-2023,MT DILLON,54.72694444444445,-9.901111111111112,Mean Temperature,106.921
+2023,MT DILLON,53.72694,-7.98083,Mean Temperature,106.921
 2023,MULLAGH (Carrowlagan),52.798,-9.401,Greatest Daily Fall,40.9
 2023,MULLAGH (Carrowlagan),52.798,-9.401,Number of Rain Days,236
 2023,MULLAGH (Carrowlagan),52.798,-9.401,Number of Wet Days,179
@@ -36542,7 +36542,7 @@ year,AreaOfResidence,Latitude,Longitude,parameter,value
 2024,MOYCULLEN (Loughwell),53.307,-9.227,Number of Wet Days,199
 2024,MOYCULLEN (Loughwell),53.307,-9.227,Precipitation Amount,1653
 2024,MT DILLON,53.727,-7.981,Precipitation Amount,1059.6
-2024,MT DILLON,54.72694444444445,-9.901111111111112,Mean Temperature,102.068
+2024,MT DILLON,53.72694,-7.98083,Mean Temperature,102.068
 2024,MULLAGH (Carrowlagan),52.798,-9.401,Greatest Daily Fall,38.8
 2024,MULLAGH (Carrowlagan),52.798,-9.401,Number of Rain Days,248
 2024,MULLAGH (Carrowlagan),52.798,-9.401,Number of Wet Days,187
@@ -37929,7 +37929,7 @@ year,AreaOfResidence,Latitude,Longitude,parameter,value
 2025,MOYCULLEN (Loughwell),53.307,-9.227,Number of Wet Days,14
 2025,MOYCULLEN (Loughwell),53.307,-9.227,Precipitation Amount,292.5
 2025,MT DILLON,53.727,-7.981,Precipitation Amount,330.6
-2025,MT DILLON,54.72694444444445,-9.901111111111112,Mean Temperature,66.685
+2025,MT DILLON,53.72694,-7.98083,Mean Temperature,66.685
 2025,MULLAGH (Carrowlagan),52.798,-9.401,Greatest Daily Fall,15.5
 2025,MULLAGH (Carrowlagan),52.798,-9.401,Number of Rain Days,23
 2025,MULLAGH (Carrowlagan),52.798,-9.401,Number of Wet Days,20

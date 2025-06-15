@@ -126,6 +126,11 @@ station_details = station_details |>
   ungroup() |>
   dplyr::select(STAID, SOUNAME, lat_dd, lon_dd) |>
   rename(ID = STAID, NAME = SOUNAME, Latitude = lat_dd, Longitude = lon_dd)
+
+station_details[which(station_details$NAME == "MT DILLON"),]$Latitude = 53.72694
+station_details[which(station_details$NAME == "MT DILLON"),]$Longitude = -7.98083
+
+station_details[which(station_details$NAME == "MT DILLON"),]
 ```
 
 ```{r}

@@ -64,9 +64,6 @@ data_daily_filtered
 ```
 
 ```{r}
-temperature_data |> filter(NAME == "MT DILLON")
-
-
 final_temperature_data = temperature_data |>
   group_by(year, NAME) |>
   summarise(
