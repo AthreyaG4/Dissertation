@@ -16,15 +16,7 @@ library(terra)
 library(raster)
 library(rnaturalearth)
 library(INLA)
-```
-
-```{r}
-data = read_csv("Weather Data/weather_data_complete.csv")
-
-test = data |>
-  filter(sun != 0 & year == 2025)
-
-unique(test$AreaOfResidence)
+library(lubridate)
 ```
 
 ```{r}
@@ -35,24 +27,73 @@ safe_sum <- function(x) {
     return(sum(x, na.rm = TRUE))
   }
 }
+```
 
-data_filtered <- data |>
+```{r}
+data_monthly = read_csv("Weather Data/weather_data_complete.csv")
+data_daily = read_csv("Weather Data/weather_data_daily_complete.csv")
+temperature_data = read_csv("Weather Data/temperature_data.csv")
+
+data_daily$date = dmy(data_daily$date)
+data_daily$day = day(data_daily$date)
+data_daily$month = month(data_daily$date)
+data_daily$year = year(data_daily$date)
+
+data_daily_filtered = data_daily |>
+  filter(year > 2000) |>
+  dplyr::select(-date, -ind...2)
+
+data_daily_filtered = data_daily_filtered |>
+  group_by(year, AreaOfResidence) |>
+  summarise(
+    "Precipitation Amount" = safe_sum(rain),
+    "Maximum Temperature" = round(mean(maxt, na.rm = TRUE),3),
+    "Minimum Temperature" = round(mean(mint, na.rm = TRUE),3),
+    "Latitude" = first(Latitude),
+    "Longitude" = first(Longitude),
+    .groups = "drop"
+  ) |>
+  pivot_longer(
+    cols = -c(year, AreaOfResidence, Latitude, Longitude),
+    names_to = "parameter",
+    values_to = "value"
+  ) |>
+  filter(!is.na(value) & !is.infinite(value))
+
+data_daily_filtered
+```
+
+```{r}
+temperature_data |> filter(NAME == "MT DILLON")
+
+
+final_temperature_data = temperature_data |>
+  group_by(year, NAME) |>
+  summarise(
+    "Mean Temperature" = round(mean(`Mean Temperature`, na.rm = TRUE),3),
+    "Latitude" = first(Latitude),
+    "Longitude" = first(Longitude),
+    .groups = "drop"
+  ) |>
+  pivot_longer(
+    cols = -c(year, NAME, Latitude, Longitude),
+    names_to = "parameter",
+    values_to = "value"
+  ) |>
+  filter(!is.na(value)) |>
+  rename(AreaOfResidence = NAME)
+
+final_temperature_data
+```
+
+```{r}
+data_filtered <- data_monthly |>
   filter(year > 2000) |>
   group_by(year, AreaOfResidence) |>
   summarise(
-    `Precipitation Amount` = safe_sum(rain),
-    `Greatest daily fall` = if (all(is.na(gdf))) NA_real_ else max(gdf, na.rm = TRUE),
-    `Number of rain days` = safe_sum(rd),
-    `Number of wet days` = safe_sum(wd),
-    `Mean Air Temperature` = mean(meant, na.rm = TRUE),
-    `Maximum Air Temperature` = if (all(is.na(maxtp))) NA_real_ else max(maxtp, na.rm = TRUE),
-    `Minimum Air Temperature` = if (all(is.na(mintp))) NA_real_ else min(mintp, na.rm = TRUE),
-    `Mean Maximum Temperature` = mean(mnmax, na.rm = TRUE),
-    `Mean Minimum Temperature` = mean(mnmin, na.rm = TRUE),
-    `Grass Minimum Temperature` = if (all(is.na(gmin))) NA_real_ else min(gmin, na.rm = TRUE),
-    `Mean Wind Speed` = mean(wdsp, na.rm = TRUE),
-    `Highest Gust` = if (all(is.na(maxgt))) NA_real_ else max(maxgt, na.rm = TRUE),
-    `Sunshine Duration` = safe_sum(sun),
+    `Greatest Daily Fall` = if (all(is.na(gdf))) NA_real_ else max(gdf, na.rm = TRUE),
+    `Number of Rain Days` = safe_sum(rd),
+    `Number of Wet Days` = safe_sum(wd),
     Latitude = first(Latitude),
     Longitude = first(Longitude),
     .groups = "drop"
@@ -64,9 +105,12 @@ data_filtered <- data |>
   ) |>
   filter(!is.na(value) & !is.infinite(value))
 
-data_filtered |>
-  filter(value == 0)
-write_csv(data_filtered, "./Weather Data/weather_data_long_clean.csv")
+data_filtered
+
+final = rbind(data_filtered, data_daily_filtered, final_temperature_data)
+final = final |> arrange(year, AreaOfResidence)
+final
+write_csv(final, "./Weather Data/weather_data_long_clean.csv")
 ```
 
 ```{r}
@@ -105,19 +149,21 @@ ireland = st_read("Counties/shapefiles/ireland_boundary.shp")
 
 grid_low_res <- expand.grid(Longitude = seq(-11, -6, len = 30), Latitude = seq(51, 56, len = 30))
 grid_low_res_sf <- grid_sf <- st_as_sf(grid_low_res, coords = c("Longitude", "Latitude"), crs = 4326)
-grid_low_res_filtered <- grid_low_res_sf[st_within(grid_low_res_sf, ireland, sparse = FALSE), ]
+grid_low_res_filtered <- grid_low_res_sf[st_within(grid_low_res_sf, map, sparse = FALSE), ]
 grid_low_res_filtered_df <- grid_low_res_filtered |>
   sf::st_coordinates() |>
   as.data.frame() |>
   setNames(c("Longitude", "Latitude"))
 
-grid_high_res <- expand.grid(Longitude = seq(-11, -6, by = 0.01), Latitude = seq(51, 56, by = 0.01))
-grid_high_res_sf <- st_as_sf(grid_high_res, coords = c("Longitude", "Latitude"), crs = 4326)
-grid_high_res_filtered <- grid_high_res_sf[st_within(grid_high_res_sf, ireland, sparse = FALSE), ]
-grid_high_res_filtered_df <- grid_high_res_filtered |>
-  sf::st_coordinates() |>
-  as.data.frame() |>
-  setNames(c("Longitude", "Latitude"))
+#prediction grid. 200 x 200 points. filtered out points which lie outside the map.
+grid <- terra::rast(map, nrows = 200, ncols = 200)
+xy <- terra::xyFromCell(grid, 1:ncell(grid))
+dp <- st_as_sf(as.data.frame(xy), coords = c("x", "y"),
+               crs = st_crs(map))
+indicespointswithin <- which(st_intersects(dp, map,
+                                           sparse = FALSE))
+dp <- st_filter(dp, map)
+pred_coords = st_coordinates(dp) #predict for these points. around 20000 data points which lie inside the map.
 
 #for (yr in years) {
 #  for (param in params) {
@@ -131,6 +177,7 @@ grid_high_res_filtered_df <- grid_high_res_filtered |>
     fdapde_response = fdapde_data$value
     
     tri_mesh <- fdaPDE::create.mesh.2D(nodes = grid_low_res_filtered_df, order = 1)
+    plot(tri_mesh)
     FEM_basis <- fdaPDE::create.FEM.basis(tri_mesh)
     
     plot(tri_mesh, main = "Mesh with Observation Points")
@@ -142,68 +189,17 @@ grid_high_res_filtered_df <- grid_high_res_filtered |>
                                   DOF.evaluation = 'exact', 
                                   lambda.selection.lossfunction = 'GCV')
     
-    FEM_zfit <- fdaPDE::eval.FEM(FEM_fit$fit.FEM, as.matrix(grid_high_res_filtered_df))
+    FEM_zfit <- fdaPDE::eval.FEM(FEM_fit$fit.FEM, pred_coords)
     
-    grid_high_res_filtered_df$value = FEM_zfit
+    output = cbind(pred_coords, FEM_zfit)
     
-    r <- rast(grid_high_res_filtered_df[, c("Longitude", "Latitude", "value")], type="xyz")
+    r <- rast(output, type="xyz")
     crs(r) <- "EPSG:4326"
 #    saveRDS(r, paste0("models/fdapde/", param, "_", yr, "_rastor.rds"))
 #  }
 #}
 
 print("done!")
-```
-
-```{r}
-rb <- raster::brick(r)
-        contours <- rasterToContour(rb, levels = pretty(range(values(rb), na.rm = TRUE), n = 10))
-        contours_sf <- st_as_sf(contours)
-        
-        pal <- colorNumeric("viridis", values(r),
-                            na.color = "transparent")
-        leaflet() %>% addTiles() %>%
-          addRasterImage(rb, colors = pal, opacity = 0.8) %>%
-          addPolylines(data = contours_sf, color = "black", weight = 1, opacity = 0.7) %>%
-          addLegend(pal = pal, values = values(r), title = "input$parameter")
-```
-
-```{r}
-grid_low_res <- expand.grid(Longitude = seq(-11, -6, by = 0.1), Latitude = seq(51, 56, by = 0.1))
-grid_high_res <- expand.grid(Longitude = seq(-11, -6, by = 0.01), Latitude = seq(51, 56, by = 0.01))
-grid_high_res_sf <- st_as_sf(grid_high_res, coords = c("Longitude", "Latitude"), crs = 4326)
-grid_high_res_filtered <- grid_high_res_sf[st_within(grid_high_res_sf, ireland, sparse = FALSE), ]
-grid_high_res_filtered_df <- grid_high_res_filtered |>
-  sf::st_coordinates() |>
-  as.data.frame() |>
-  setNames(c("Longitude", "Latitude"))
-
-tri_mesh <- fdaPDE::create.mesh.2D(grid_low_res, order = 1)
-FEM_basis <- fdaPDE::create.FEM.basis(tri_mesh)
-
-fdapde_data = data_filtered |>
-      filter(parameter == "Mean Maximum Temperature" & year >= 2001 & year <= 2005)
-    
-fdapde_variates = fdapde_data |>
-  dplyr::select(Longitude, Latitude) |>
-  as.matrix()
-
-fdapde_response = fdapde_data$value
-
-plot(tri_mesh, main = "Mesh with Observation Points")
-points(fdapde_variates, col = "red", pch = 20)
-
-FEM_fit <- fdaPDE::smooth.FEM(fdapde_variates, 
-                                  fdapde_response, 
-                                  FEM_basis, lambda = 10^(-6:6),
-                                  DOF.evaluation = 'exact', 
-                                  lambda.selection.lossfunction = 'GCV')
-
-FEM_zfit <- fdaPDE::eval.FEM(FEM_fit$fit.FEM, as.matrix(grid_high_res_filtered_df[,c("Longitude", "Latitude")]))
-grid_high_res_filtered_df$value = FEM_zfit
-
-r <- rast(grid_high_res_filtered_df[, c("Longitude", "Latitude", "value")], type="xyz")
-crs(r) <- "EPSG:4326"
 ```
 
 ```{r}

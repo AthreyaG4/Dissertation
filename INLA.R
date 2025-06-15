@@ -9,6 +9,7 @@ library(sf)
 library(ggplot2)
 library(leaflet)
 library(viridis)
+library(fmesher)
 
 #read data
 data = read_csv("./Weather Data/weather_data_long_clean.csv")
@@ -16,7 +17,7 @@ df = data |>
   rename(station.name = AreaOfResidence) |>
   mutate(station.id = as.numeric(as.factor(station.name)))
 parameters = unique(data$parameter)
-parameters = parameters[1:length(parameters) -1]
+parameters = parameters[-4]
 
 #get the map
 map <- ne_countries(type = "countries",
@@ -44,7 +45,6 @@ dp <- st_filter(dp, map)
 
 #coordinates
 pred_coords = st_coordinates(dp)
-
 
 for (param in parameters) {
   #filter and add station id
@@ -74,8 +74,7 @@ for (param in parameters) {
   st_crs(df_sf) <- "EPSG:4326" 
   
   #create mesh
-  mesh = fmesher::fm_mesh_2d(loc = unique(st_coordinates(df_sf)), boundary = bnd, max.edge=c(40,100), min.angle=c(21,21), cutoff = 0.05)
-  
+  mesh = fmesher::fm_mesh_2d(loc = unique(st_coordinates(df_sf)), boundary = bnd, max.edge=c(40,100), min.angle=c(21,21), cutoff = 0.1)
   #plot mesh and the data points
   plot(mesh)
   points(st_coordinates(df_sf), col = "red")
@@ -99,6 +98,15 @@ for (param in parameters) {
                           data = list(value = df_filtered$value), A = list(1, A.est),
                           effects = list(data.frame(Intercept = rep(1, nrow(A.est))),
                                          s = field.indices))
+  
+  #prediction for single year
+  #A.pred = inla.spde.make.A(mesh, loc=as.matrix(pred_coords),
+  #                          group=1, n.group=n_year)
+  
+  #stack.pred <- inla.stack(tag = "pred",
+  #                         data = list(value = NA), A = list(1, A.pred),
+  #                         effects = list(data.frame(Intercept = rep(1, nrow(A.pred))),
+  #                                        s = field.indices))
   
   #building prediction stack
   A.pred = inla.spde.make.A(mesh, loc=as.matrix(expanded_coords),
@@ -130,20 +138,23 @@ for (param in parameters) {
   
   
   output = cbind(expanded_coords, output = pred_mean)
+  r = terra::rast(output, type = "xyz")
+  crs(r) = "EPSG:4326"
   if(!dir.exists("rastors")) dir.create("rastors")
   if(!dir.exists("rastors/inla")) dir.create("rastors/inla")
   for (yr in 1:n_year){
     upper_bound = (yr - 1) * nrow(pred_coords) + nrow(pred_coords)
     lower_bound = (yr - 1) * nrow(pred_coords) + 1
+    y = yr + 2000
     r <- terra::rast(output[lower_bound:upper_bound,], type = "xyz")
     crs(r) <- "EPSG:4326"
-    saveRDS(r, paste0("rastors/inla/",param,"_",yr,"_rastor.rds"))
+    saveRDS(r, paste0("rastors/inla/",param,"_",y,"_rastor.rds"))
   }
 }
 
 
-parameter = "Sunshine Duration"
-year = "1"
+parameter = "Precipitation Amount"
+year = "2005"
 
 r = readRDS(paste0("rastors/inla/",parameter,"_",year,"_rastor.rds"))
   
@@ -154,10 +165,8 @@ pal <- colorNumeric("viridis", values(r),
                     na.color = "transparent")
 leaflet() %>% addTiles() %>%
   addRasterImage(rb, colors = pal, opacity = 0.8) %>%
-  addPolylines(data = contours_sf, color = "black", weight = 1, opacity = 0.7) %>%
+  #addPolylines(data = contours_sf, color = "black", weight = 1, opacity = 0.7) %>%
   addLegend(pal = pal, values = values(r), title = "input$parameter")
-
-parameters = unique(data$parameter)
 
 
 

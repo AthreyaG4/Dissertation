@@ -1,0 +1,14 @@
+Station Name: UCC
+Station Height: 10 M 
+Latitude:51.900  ,Longitude: -8.486
+
+
+date: -   09 to 09 utc
+rain: -   Precipitation Amount (mm)
+maxt: -   Maximum Temperature (C)
+mint: -   Minimum Temperature (C)
+gmin: -   09utc Grass Minimum Temperature (C)
+soil: -   10cm Soil Temperature (C)
+ind:  -	  Indicator
+
+date,ind,rain,ind,maxt,ind,mint,gmin,soil

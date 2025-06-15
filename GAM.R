@@ -46,8 +46,8 @@ for(param in parameters){
   }
 }
 
-parameter = "Precipitation Amount"
-year = "2001"
+parameter = "Mean Temperature"
+year = "2006"
 
 rastor_file = readRDS(paste0("rastors/gam/", parameter, "_", year, "_rastor.rds"))
 

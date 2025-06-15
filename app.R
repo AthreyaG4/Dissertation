@@ -160,7 +160,7 @@ server = function(input, output, session) {
                             na.color = "transparent")
         leaflet() %>% addTiles() %>%
           addRasterImage(rb, colors = pal, opacity = 0.8) %>%
-          addPolylines(data = contours_sf, color = "black", weight = 1, opacity = 0.7) %>%
+          #addPolylines(data = contours_sf, color = "black", weight = 1, opacity = 0.7) %>%
           addLegend(pal = pal, values = values(subsetted3()), title = input$parameter)
       }
     }
