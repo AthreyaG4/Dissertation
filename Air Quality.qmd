@@ -1,0 +1,41 @@
+---
+title: "Air Quality Data"
+format: pdf
+editor: visual
+---
+
+```{r}
+library(tidyverse)
+library(leaflet)
+library(viridis)
+library(sf)
+```
+
+```{r}
+air_quality_complete = read_csv("Air Quality data/air_quality_data_complete.csv")
+```
+
+```{r}
+air_quality_complete_sf = st_as_sf(air_quality_complete, coords = c("Longitude", "Latitude"))
+air_quality_complete_sf
+```
+
+```{r}
+yr = 2022
+params = "PM2.5"
+```
+
+```{r}
+air_quality_complete_sf_filtered = air_quality_complete_sf |> 
+  filter(Year == yr & `Air Pollutant` == params) |>
+  na.omit()
+
+pal = colorNumeric(palette = "viridis", domain = abs(air_quality_complete_sf_filtered$`value`))
+l = leaflet(air_quality_complete_sf_filtered) |> addTiles() |>
+          addCircles(lng = st_coordinates(air_quality_complete_sf_filtered)[, 1],
+                     lat = st_coordinates(air_quality_complete_sf_filtered)[, 2],
+                     radius = abs(air_quality_complete_sf_filtered$`value`)/max(abs(air_quality_complete_sf_filtered$`value`), na.rm = TRUE)*5000,
+                     color = ~pal(abs(air_quality_complete_sf_filtered$`value`)), popup = ~paste(`Air Quality Station Name`, ":", air_quality_complete_sf_filtered$`value`)) |>
+          addLegend(pal = pal, values = ~`value`)
+l
+```

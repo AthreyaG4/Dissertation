@@ -1,0 +1,51 @@
+---
+title: "Process Air Quality Data"
+format: pdf
+editor: visual
+---
+
+```{r}
+library(tidyverse)
+library(sf)
+library(viridis)
+library(leaflet)
+```
+
+```{r}
+pm10 = read_csv("Air Quality data/PM10.csv")
+pm25 = read_csv("Air Quality data/PM2.5.csv")
+```
+
+```{r}
+pm10 = pm10 |> 
+  filter(Year > 2000) |>
+  dplyr::select(`Air Quality Station Name`, Year, `Air Pollutant`, `Air Pollution Level`, Longitude, Latitude) |>
+  rename(value = `Air Pollution Level`)
+pm25 = pm25 |>
+  filter(Year > 2000) |>
+  dplyr::select(`Air Quality Station Name`, Year, `Air Pollutant`, `Air Pollution Level`, Longitude, Latitude) |>
+  rename(value = `Air Pollution Level`)
+
+air_quality_data = rbind(pm10, pm25)
+write_csv(air_quality_data, "Air Quality data/air_quality_data_complete.csv")
+```
+
+```{r}
+pm10 = st_as_sf(pm10, coords = c("Longitude","Latitude"))
+st_crs(pm10) = 4326
+pm10_year = pm10 |> filter(Year == 2020)
+pm10_year = na.omit(pm10_year)
+pal = colorNumeric(palette = "viridis", domain = abs(pm10_year$`Air Pollution Level`))
+l = leaflet(pm10_year) |> addTiles() |>
+          addCircles(lng = st_coordinates(pm10_year)[, 1],
+                     lat = st_coordinates(pm10_year)[, 2],
+                     radius = abs(pm10_year$`Air Pollution Level`)/max(abs(pm10_year$`Air Pollution Level`), na.rm = TRUE)*5000,
+                     color = ~pal(abs(pm10_year$`Air Pollution Level`)), popup = ~paste(`Air Quality Station Name`, ":", pm10_year$`Air Pollution Level`)) |>
+          addLegend(pal = pal, values = ~`Air Pollution Level`)
+l
+
+```
+
+```{r}
+
+```

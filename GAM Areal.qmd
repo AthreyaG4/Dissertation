@@ -1,0 +1,86 @@
+---
+title: "GAM Areal"
+format: pdf
+editor: visual
+---
+
+```{r}
+library(tidyverse)
+library(sf)
+library(mapview)
+library(mgcv)
+library(rnaturalearth)
+library(terra)
+```
+
+```{r}
+data_sf = st_read("Counties/shapefiles/lungcancer.shp")
+map <- ne_countries(type = "countries",
+                    country = "Ireland",
+                    scale = "large", returnclass = "sf")
+
+# 1. Assign EPSG:2157 if not already set
+st_crs(data_sf) <- 2157
+```
+
+```{r}
+yr = 2022
+data_year = data_sf |> filter(Year == yr)
+
+# 2. Transform to WGS84 (lat/lon)
+data_year_transformed <- st_transform(data_year, crs = 4326)
+
+# 3. Extract the lat/lon from geometry
+centroids <- st_centroid(data_year_transformed)
+```
+
+```{r}
+mapview(centroids, zcol = "value")
+```
+
+```{r}
+latlon = st_coordinates(centroids)
+gam_data = data.frame(value = centroids$value, Longitude = latlon[,"X"], Latitude = latlon[,"Y"])
+gam_data = gam_data |> mutate(
+        weight = (value - min(value, na.rm = TRUE)) / (max(value, na.rm = TRUE) - min(value, na.rm = TRUE)) + 1e-4
+      )
+K = length(unique(paste(gam_data$Latitude, gam_data$Longitude)))
+
+model = mgcv::gam(value ~ s(Latitude, Longitude, bs="tp", k = K), 
+                      data = gam_data, 
+                      weights = weight,
+                      family = "gaussian",  # Fixed typo
+                      method = "REML")
+
+preds = gam_data |> dplyr::select(Longitude, Latitude)
+preds$value = predict(model, newdata = preds)
+data_year$preds = preds$value
+data_year$preds = as.vector(data_year$preds)
+data_year = data_year |> dplyr::select(geometry, preds)
+
+st_write(data_year, "areal_outputs/gam/lungcancer_predictions.shp", delete_layer = TRUE)
+
+mapview(data_year, zcol = "preds")
+```
+
+```{r}
+# Create prediction grid
+grid <- terra::rast(map, nrows = 200, ncols = 200)
+xy <- terra::xyFromCell(grid, 1:ncell(grid))
+dp <- st_as_sf(as.data.frame(xy), coords = c("x", "y"),
+               crs = st_crs(map))
+
+# Filter points within map boundaries
+dp <- st_filter(dp, map)
+pred_coords = st_coordinates(dp)
+
+# Create prediction dataframe
+grid_df = as.data.frame(pred_coords)
+names(grid_df) = c("Longitude", "Latitude")  # This is correct
+
+# Make predictions
+grid_df$value <- predict(model, newdata = grid_df)
+r <- rast(grid_df[, c("Longitude", "Latitude", "value")], type="xyz")
+crs(r) <- "EPSG:4326"
+mapview(r)
+```

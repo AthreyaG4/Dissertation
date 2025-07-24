@@ -106,3 +106,8 @@ l <- leaflet(plt) %>% addTiles() %>%
   addLegend(pal = pal, values = ~VALUE, opacity = 0.8)
 l
 ```
+
+```{r}
+mortality_data = st_read("Counties/shapefiles/shapefile.shp")
+as.data.frame(mortality_data)
+```

@@ -14,6 +14,7 @@ library(viridis)
 
 mortality_data = st_read("Counties/shapefiles/shapefile.shp")
 weather_data = read_csv("Weather Data/weather_data_long_clean.csv")
+air_quality_data = read_csv("Air Quality data/air_quality_data_complete.csv")
 ireland = st_read("Counties/shapefiles/ireland_boundary.shp")
 grid = readRDS(file = "ireland_grid.rds")
 
@@ -22,9 +23,11 @@ grid_df <- grid |>
   as.data.frame() |>
   setNames(c("Longitude", "Latitude"))
 
-
 dsf = st_as_sf(weather_data, coords = c("Longitude", "Latitude"))
 st_crs(dsf) = 4326
+ 
+air_quality_sf = st_as_sf(air_quality_data, coords = c("Longitude", "Latitude"))
+st_crs(air_quality_sf) = 4326
 
 ui = page_sidebar(
   sidebar = sidebar(
@@ -34,7 +37,8 @@ ui = page_sidebar(
       label = "Data", 
       choices = list(
         "Mortality Data" = 1, 
-        "Weather Data" = 2
+        "Weather Data" = 2,
+        "Air Quality Data" = 3
       ) 
     ),
     radioButtons( 
@@ -51,6 +55,8 @@ ui = page_sidebar(
     selectInput("cod", "Cause of Death", choices = unique(mortality_data$ICD10DG)),
     selectInput("year2", "Year", choices = unique(weather_data$year)),
     selectInput("parameter", "Parameters", choices = unique(weather_data$parameter)),
+    selectInput("year3", "Year", choices = unique(air_quality_data$Year)),
+    selectInput("pollutant", "Pollutant", choices = unique(air_quality_data$`Air Pollutant`)),
     sliderInput("slider", "Opacity", 
                 min = 0, max = 1, value = 0.8)
   ),
@@ -64,11 +70,22 @@ server = function(input, output, session) {
       enable("cod")
       disable("year2")
       disable("parameter")
-    } else {
+      disable("year3")
+      disable("pollutant")
+    } else if(input$data_select == 2) {
       enable("year2")
       enable("parameter")
       disable("year1")
       disable("cod")
+      disable("year3")
+      disable("pollutant")
+    } else if(input$data_select == 3) {
+      disable("year2")
+      disable("parameter")
+      disable("year1")
+      disable("cod")
+      enable("year3")
+      enable("pollutant")
     }
     
     if (input$actual_predicted == 2){
@@ -125,6 +142,18 @@ server = function(input, output, session) {
     input$model
   )
   
+  subsetted4 = bindCache(
+    reactive({
+      req(input$year3, input$pollutant)
+      print(input$year3)
+      print(input$pollutant)
+      air_quality_sf = air_quality_sf |> filter(Year == input$year3 & `Air Pollutant` == input$pollutant & !is.na(value))
+      return(air_quality_sf)
+    }),
+    input$year3,
+    input$pollutant
+  )
+  
   output$map = renderLeaflet({
     if (input$data_select == 1) {
       pal = colorNumeric(palette = "YlOrRd", domain = subsetted1()$VALUE)
@@ -141,7 +170,7 @@ server = function(input, output, session) {
       l = l |> addLegend(pal = pal, values = ~VALUE, opacity = input$slider)
       l
     }
-    else{
+    else if(input$data_select == 2) {
       if (input$actual_predicted == 1){
         pal = colorNumeric(palette = "viridis", domain = abs(subsetted2()$value))
         l = leaflet(subsetted2()) |> addTiles() |>
@@ -163,6 +192,17 @@ server = function(input, output, session) {
           #addPolylines(data = contours_sf, color = "black", weight = 1, opacity = 0.7) %>%
           addLegend(pal = pal, values = values(subsetted3()), title = input$parameter)
       }
+    } 
+    else if(input$data_select == 3){
+      print(subsetted4())
+      pal = colorNumeric(palette = "viridis", domain = abs(subsetted4()$`value`))
+      l = leaflet(subsetted4()) |> addTiles() |>
+        addCircles(lng = st_coordinates(subsetted4())[, 1],
+                   lat = st_coordinates(subsetted4())[, 2],
+                   radius = abs(subsetted4()$`value`)/max(abs(subsetted4()$`value`), na.rm = TRUE)*5000,
+                   color = ~pal(abs(subsetted4()$`value`)), popup = ~paste(`Air Quality Station Name`, ":", subsetted4()$`value`)) |>
+        addLegend(pal = pal, values = ~`value`)
+      l
     }
 
   })

@@ -21,19 +21,22 @@ plot(sf::st_geometry(map))
 
 #get the data
 data = read_csv("./Weather Data/weather_data_long_clean.csv")
+data = read_csv("Air Quality data/air_quality_data_complete.csv")
 
 years = seq(2001, 2025)
-param = "Mean Temperature"
+param = "PM10"
+years = c(2022)
 for (yr in years) {
   #filter for particular year
   data_filtered = data |>
-    filter(parameter == param & year == yr) |>
-    dplyr::select(-AreaOfResidence, -year, -parameter)
+    filter(`Air Pollutant` == param & Year == yr) |>
+    dplyr::select(-`Air Quality Station Name`, -Year, -`Air Pollutant`) |>
+    na.omit()
   
   #data_filtered$value <- log1p(data_filtered$value)
   #view the points on the map
   points(data_filtered[,c("Longitude","Latitude")], col = "red")
-  data_filtered |> summarise(n = n(), var = var(value), mean = mean(value))
+  data_filtered$value = data_filtered$value^2
   
   #make sf object
   data_sf = st_as_sf(data_filtered, coords = c("Longitude","Latitude"), crs=sf::st_crs(map))
@@ -57,7 +60,7 @@ for (yr in years) {
   plot(tri_meshr)
   points(data_sf, col = "red")
   FEM_basis <- fdaPDE::create.FEM.basis(tri_mesh)
-  FEM_fit <- fdaPDE::smooth.FEM(as.matrix(data_filtered[,c(2,1)]), data_filtered[,3], FEM_basis, lambda = 10^-3,
+  FEM_fit <- fdaPDE::smooth.FEM(as.matrix(data_filtered[,c(2,3)]), data_filtered[,1], FEM_basis, lambda = 10^seq(-6,6),
                                 DOF.evaluation = 'exact', 
                                 lambda.selection.lossfunction = 'GCV')
   
@@ -79,7 +82,8 @@ for (yr in years) {
   #pred_values <- FEM_zfit * sd_z + mean_z
   
   output = cbind(pred_coords, FEM_zfit)
-  
+  output[,3] = sqrt(output[,3])
+
   #make rastor object for plotting
   r <- terra::rast(output, type = "xyz")
   crs(r) <- "EPSG:4326"

@@ -1,0 +1,76 @@
+---
+title: "testing"
+format: pdf
+editor: visual
+---
+
+```{r}
+library(mgcv)
+library(tidyverse)
+library(mapview)
+library(sf)
+```
+
+```{r}
+map <- ne_countries(type = "countries",
+                    country = "Ireland",
+                    scale = "large", returnclass = "sf")
+
+data = read_csv("Air Quality data/air_quality_data_complete.csv")
+data_clean = data |> dplyr::select(Year, `Air Pollutant`, value, Longitude, Latitude)
+
+#data = read_csv("Weather Data/weather_data_long_clean.csv")
+#data_clean = data |> dplyr::select(year, parameter, value, Longitude, Latitude)
+```
+
+```{r}
+yr = 2022
+pollutant = "PM2.5"
+
+#yr = 2022
+#param = "Precipitation Amount"
+
+data_year = data_clean |> filter(Year == yr & `Air Pollutant` == pollutant) |> dplyr::select(Longitude, Latitude, value) |> filter(!is.na(value))
+
+#data_year = data_clean |> filter(year == yr & parameter == param) |> dplyr::select(Longitude, Latitude, value)
+
+data_year$weight <- (data_year$value - min(data_year$value)) / 
+                    (max(data_year$value) - min(data_year$value)) + 1e-4
+
+#data_year$weight <- log(data_year$value + 1)
+
+data_year_sf = st_as_sf(data_year, coords = c("Longitude", "Latitude"))
+st_crs(data_year_sf) = 4326
+
+#display the data
+mapview(data_year_sf, zcol = "value")
+```
+
+```{r}
+K = length(unique(paste(data_year$Latitude, data_year$Longitude)))
+GAM_fit <- mgcv::gam(value ~ s(Longitude,Latitude,bs = 'tp', k = K), weights = weight,data = data_year,
+                     family = gaussian(), method = 'REML')
+
+# Create prediction grid
+grid <- terra::rast(map, nrows = 200, ncols = 200)
+xy <- terra::xyFromCell(grid, 1:ncell(grid))
+dp <- st_as_sf(as.data.frame(xy), coords = c("x", "y"),
+               crs = st_crs(map))
+
+# Filter points within map boundaries
+dp <- st_filter(dp, map)
+pred_coords = st_coordinates(dp)
+
+# Create prediction dataframe
+grid_df = as.data.frame(pred_coords)
+names(grid_df) = c("Longitude", "Latitude")  # This is correct
+
+# Make predictions
+grid_df$value <- mgcv::predict.gam(GAM_fit, grid_df)
+```
+
+```{r}
+r <- rast(grid_df[, c("Longitude", "Latitude", "value")], type="xyz")
+crs(r) <- "EPSG:4326"
+mapview(r)
+```
