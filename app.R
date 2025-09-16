@@ -38,7 +38,6 @@ ui = page_sidebar(
       ) 
     ),
     selectInput("model", "Model", choices = c("GAM", "FDAPDE")),
-    # NEW: appears/enables only for Lung + Predictions + FDAPDE
     checkboxInput("use_covariates", "Use covariates", value = FALSE),
     hr(),
     selectInput("pollutant", "Pollutant", choices = unique(air_quality_data$`Air Pollutant`)),
@@ -48,25 +47,19 @@ ui = page_sidebar(
 )
 
 server <- function(input, output, session) {
-  
-  # --- constants: set these to match your radio values ---
-  LUNG <- 1     # Lung cancer
-  AIR  <- 2     # Air quality
+  LUNG <- 1
+  AIR  <- 2
   
   # --- UI toggles ---
   observe({
-    # Pollutant only for Air quality
     toggleState("pollutant", condition = (input$data_select == AIR))
     
-    # Model only for Predictions
     toggleState("model", condition = (input$actual_predicted == 2))
     
-    # Covariates checkbox: show+enable only for Lung + Predictions + FDAPDE
     show_cov <- (input$data_select == LUNG && input$actual_predicted == 2)
     shinyjs::toggle(id = "use_covariates", condition = show_cov)
     toggleState("use_covariates", condition = show_cov)
     
-    # If leaving the condition, reset to FALSE so state doesn't leak
     if (!show_cov && isTRUE(input$use_covariates)) {
       updateCheckboxInput(session, "use_covariates", value = FALSE)
     }
@@ -79,7 +72,6 @@ server <- function(input, output, session) {
       
       dat <- dplyr::filter(lung_cancer, Year == 2022)
       
-      # If CRS missing, set ITM (EPSG:2157), then transform to WGS84 (EPSG:4326)
       if (is.na(sf::st_crs(dat))) sf::st_crs(dat) <- 2157
       dat <- dat |>
         sf::st_make_valid() |>
@@ -164,7 +156,6 @@ server <- function(input, output, session) {
             weight = 1, color = "white",
             fillOpacity = input$slider,
             fillColor = ~pal_log(log1p(CsNmbrs)),
-            # 👇 this shows on hover
             label = ~sprintf("%s: %s", nm, scales::comma(CsNmbrs)),
             labelOptions = labelOptions(
               direction = "auto", textsize = "12px", opacity = 0.9,
@@ -175,7 +166,6 @@ server <- function(input, output, session) {
                 "box-shadow"       = "0 1px 3px rgba(0,0,0,0.2)"
               )
             ),
-            # 👇 this makes the polygon react on hover
             highlightOptions = highlightOptions(
               weight = 2, color = "#333", bringToFront = TRUE
             )
@@ -207,7 +197,6 @@ server <- function(input, output, session) {
             weight = 1, color = "white",
             fillOpacity = input$slider,
             fillColor = ~pal_log(log1p(preds)),
-            # 👇 this shows on hover
             label = ~sprintf("%s: %s", nm, scales::comma(preds)),
             labelOptions = labelOptions(
               direction = "auto", textsize = "12px", opacity = 0.9,
@@ -218,7 +207,6 @@ server <- function(input, output, session) {
                 "box-shadow"       = "0 1px 3px rgba(0,0,0,0.2)"
               )
             ),
-            # 👇 this makes the polygon react on hover
             highlightOptions = highlightOptions(
               weight = 2, color = "#333", bringToFront = TRUE
             )
