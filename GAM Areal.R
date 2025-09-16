@@ -15,14 +15,10 @@ data_sf = data_sf |> filter(Year == 2022)
 
 data_sf <- st_make_valid(data_sf)
 
-# build adjacency (fast)
-nb <- poly2nb(data_sf) # neighbours by shared border
-# make sure region_id factor levels match nb names:
+nb <- poly2nb(data_sf)
 data_sf$region_id <- factor(seq_len(nrow(data_sf)))
-# (optionally) attach names for clarity
 names(nb) <- levels(data_sf$region_id)
 
-# fit MRF GAM using nb (no polygons)
 mrf_model <- gam(CsNmbrs ~ s(region_id, bs = "mrf", xt = list(nb = nb), k = 10),
                  data = data_sf, family = poisson(), method = "REML")
 
@@ -30,7 +26,7 @@ summary(mrf_model)
 appraise(mrf_model)
 
 y_obs  <- data_sf$CsNmbrs
-y_pred <- predict(mrf_model, type = "response")  # fitted counts
+y_pred <- predict(mrf_model, type = "response")
 
 rmse <- sqrt(mean((y_obs - y_pred)^2))
 rmse
@@ -47,17 +43,17 @@ rng   <- range(d$preds, na.rm = TRUE)
 rng[1] <- floor(rng[1])
 rng[2] <- ceiling(rng[2])
 ticks <- expm1(seq(log1p(rng[1]), log1p(rng[2]), length.out = 6))
-ticks <- round(ticks)  # clean integers
+ticks <- round(ticks)
 
 gg1 <- ggplot(d) +
   geom_sf(aes(fill = preds), color = "black", linewidth = 0.5, alpha = 0.75) +
   scale_fill_distiller(
-    palette   = "YlOrRd",      # ColorBrewer
-    direction = 1,             # 1 = red high; -1 = yellow high
-    trans     = log1p_trans(), # continuous log colours
+    palette   = "YlOrRd",
+    direction = 1,
+    trans     = log1p_trans(),
     limits    = rng,
     breaks    = ticks,
-    labels    = label_comma(), # 1,000 separators
+    labels    = label_comma(),
     na.value  = NA,
     name      = "",
     guide     = guide_colorbar(
@@ -78,7 +74,7 @@ ticks <- seq(rng[1], rng[2], length.out = 6)
 gg2 <- ggplot(d) +
   geom_sf(aes(fill = residuals), color = "black", linewidth = 0.5, alpha = 0.75) +
   scale_fill_distiller(
-    palette   = "RdBu",        # diverging red-blue for residuals
+    palette   = "RdBu",
     direction = 1,
     limits    = c(-80,80),
     labels    = label_comma(),

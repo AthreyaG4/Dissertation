@@ -35,11 +35,8 @@ data_sf$pm10_preds = pm10_preds
 
 data_sf = st_transform(data_sf, 2157)
 
-# build adjacency (fast)
-nb = poly2nb(data_sf) # neighbours by shared border
-# make sure region_id factor levels match nb names:
+nb = poly2nb(data_sf)
 data_sf$region_id = factor(seq_len(nrow(data_sf)))
-# (optionally) attach names for clarity
 names(nb) = levels(data_sf$region_id)
 
 mrf_model = gam(
@@ -82,7 +79,7 @@ rmse
 
 # predictions per area
 data_sf$preds = as.numeric(
-  predict(mrf_cov_model_pm25, type = "response") #change model here.
+  predict(mrf_cov_model_pm25, type = "response")
   ) 
 
 #calculate residuals
