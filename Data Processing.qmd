@@ -1,0 +1,101 @@
+---
+title: "Data Processing"
+format: pdf
+editor: visual
+---
+
+```{r}
+library(tidyverse)
+library(viridis)
+library(ggplot2)
+library(stringr)
+library(sf)
+library(leaflet)
+library(viridis)
+library(mgcv)
+library(terra)
+library(raster)
+library(rnaturalearth)
+library(INLA)
+library(lubridate)
+```
+
+```{r}
+safe_sum <- function(x) {
+  if (all(is.na(x))) {
+    return(NA_real_)
+  } else {
+    return(sum(x, na.rm = TRUE))
+  }
+}
+```
+
+# Air Quality Data:
+
+```{r}
+pm10 = read_csv("Data files/Air Quality data/PM10.csv")
+pm25 = read_csv("Data files/Air Quality data/PM2.5.csv")
+```
+
+```{r}
+pm10 = pm10 |> 
+  filter(Year > 2000) |>
+  dplyr::select(`Air Quality Station Name`, Year, `Air Pollutant`, `Air Pollution Level`, Longitude, Latitude) |>
+  rename(value = `Air Pollution Level`)
+pm25 = pm25 |>
+  filter(Year > 2000) |>
+  dplyr::select(`Air Quality Station Name`, Year, `Air Pollutant`, `Air Pollution Level`, Longitude, Latitude) |>
+  rename(value = `Air Pollution Level`)
+
+air_quality_data = rbind(pm10, pm25)
+air_quality_data = air_quality_data |>
+  rename(Location = `Air Quality Station Name`, Covariate = `Air Pollutant`, Value = value) |>
+  dplyr::select(Year, Location, Latitude, Longitude, Covariate, Value)
+```
+
+```{r}
+write_csv(air_quality_data, "Data files/point_data_complete.csv")
+```
+
+# Lung Cancer Data
+
+```{r}
+lung_cancer <- read_delim("Data files/Cancer Data/Cancers.csv", delim = "\t", locale = locale(encoding = "UTF-16LE"))
+
+lung_cancer = lung_cancer |> filter(Sex == "Both") |> dplyr::select(Region, Year, `Case Numbers`)
+
+lung_cancer$Region = toupper(lung_cancer$Region)
+
+lung_cancer = lung_cancer |> filter(! (Region %in% c("DUBLIN NORTH", "DUBLIN SOUTH", "HSE DUBIN SOUTH EAST", "HSE DUBLIN MID LEINSTER", "HSE DUBLIN NORTH EAST", "HSE SOUTH WEST", "HSE WEST", "HSE WEST NORTH WEST", "IRELAND", "TIPPERARY NORTH", "TIPPERARY SOUTH")))
+
+lung_cancer$Region[lung_cancer$Region == "DUBLIN (TOTAL)"] = "DUBLIN"
+
+lung_cancer$Region[lung_cancer$Region == "TIPPERARY (TOTAL)"] = "TIPPERARY"
+
+lung_cancer$`Case Numbers` = as.numeric(lung_cancer$`Case Numbers`)
+
+lung_cancer$value = log1p(lung_cancer$`Case Numbers`)
+
+pop_data = read_csv("Data files/Population/PEA08.20250831T160804.csv")
+pop_clean <- pop_data %>%
+  mutate(
+    County = str_replace_all(County, "^Co\\.?\\s*", ""),  # drop "Co." prefix
+    County = str_squish(County),
+    County_std = str_to_upper(County),
+    Population = VALUE * 1000  # because UNIT == "Thousand"
+  ) %>%
+  dplyr::select(County_std, Population) |>
+  rename(Region = County_std)
+
+pop_clean
+
+lung_cancer = lung_cancer |> left_join(pop_clean, by = "Region")
+```
+
+```{r}
+map = st_read("Counties/Counties___OSi_National_Statutory_Boundaries_7992851692716515542.gpkg")
+map = map |> dplyr::select(ENGLISH, SHAPE) |> rename(Region = ENGLISH)
+
+lung_cancer_sf = lung_cancer |> left_join(map, by = "Region") |> st_as_sf()
+st_write(lung_cancer_sf, "Counties/shapefiles/lungcancer.shp")
+```

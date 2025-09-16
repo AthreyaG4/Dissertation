@@ -12,20 +12,9 @@ library(raster)
 library(rnaturalearth)
 library(viridis)
 
-mortality_data = st_read("Counties/shapefiles/shapefile.shp")
-weather_data = read_csv("Weather Data/weather_data_long_clean.csv")
-air_quality_data = read_csv("Air Quality data/air_quality_data_complete.csv")
-ireland = st_read("Counties/shapefiles/ireland_boundary.shp")
-grid = readRDS(file = "ireland_grid.rds")
+lung_cancer = st_read("Counties/shapefiles/lungcancer.shp")
+air_quality_data = read_csv("Data files/Air Quality data/air_quality_data_complete.csv")
 
-grid_df <- grid |>
-  sf::st_coordinates() |>
-  as.data.frame() |>
-  setNames(c("Longitude", "Latitude"))
-
-dsf = st_as_sf(weather_data, coords = c("Longitude", "Latitude"))
-st_crs(dsf) = 4326
- 
 air_quality_sf = st_as_sf(air_quality_data, coords = c("Longitude", "Latitude"))
 st_crs(air_quality_sf) = 4326
 
@@ -36,9 +25,8 @@ ui = page_sidebar(
       inputId = "data_select", 
       label = "Data", 
       choices = list(
-        "Mortality Data" = 1, 
-        "Weather Data" = 2,
-        "Air Quality Data" = 3
+        "Lung Cancer" = 1, 
+        "Air Quality Data" = 2
       ) 
     ),
     radioButtons( 
@@ -49,162 +37,225 @@ ui = page_sidebar(
         "Model Predictions" = 2
       ) 
     ),
-    selectInput("model", "Model", choices = c("GAM", "FDAPDE", "INLA")),
+    selectInput("model", "Model", choices = c("GAM", "FDAPDE")),
+    # NEW: appears/enables only for Lung + Predictions + FDAPDE
+    checkboxInput("use_covariates", "Use covariates", value = FALSE),
     hr(),
-    selectInput("year1", "Year", choices = unique(mortality_data$Year)),
-    selectInput("cod", "Cause of Death", choices = unique(mortality_data$ICD10DG)),
-    selectInput("year2", "Year", choices = unique(weather_data$year)),
-    selectInput("parameter", "Parameters", choices = unique(weather_data$parameter)),
-    selectInput("year3", "Year", choices = unique(air_quality_data$Year)),
     selectInput("pollutant", "Pollutant", choices = unique(air_quality_data$`Air Pollutant`)),
-    sliderInput("slider", "Opacity", 
-                min = 0, max = 1, value = 0.8)
+    sliderInput("slider", "Opacity", min = 0, max = 1, value = 0.8)
   ),
   leafletOutput("map")
 )
 
-server = function(input, output, session) {
+server <- function(input, output, session) {
+  
+  # --- constants: set these to match your radio values ---
+  LUNG <- 1     # Lung cancer
+  AIR  <- 2     # Air quality
+  
+  # --- UI toggles ---
   observe({
-    if (input$data_select == 1) {
-      enable("year1")
-      enable("cod")
-      disable("year2")
-      disable("parameter")
-      disable("year3")
-      disable("pollutant")
-    } else if(input$data_select == 2) {
-      enable("year2")
-      enable("parameter")
-      disable("year1")
-      disable("cod")
-      disable("year3")
-      disable("pollutant")
-    } else if(input$data_select == 3) {
-      disable("year2")
-      disable("parameter")
-      disable("year1")
-      disable("cod")
-      enable("year3")
-      enable("pollutant")
-    }
+    # Pollutant only for Air quality
+    toggleState("pollutant", condition = (input$data_select == AIR))
     
-    if (input$actual_predicted == 2){
-      enable("model")
-    } else {
-      disable("model")
+    # Model only for Predictions
+    toggleState("model", condition = (input$actual_predicted == 2))
+    
+    # Covariates checkbox: show+enable only for Lung + Predictions + FDAPDE
+    show_cov <- (input$data_select == LUNG && input$actual_predicted == 2)
+    shinyjs::toggle(id = "use_covariates", condition = show_cov)
+    toggleState("use_covariates", condition = show_cov)
+    
+    # If leaving the condition, reset to FALSE so state doesn't leak
+    if (!show_cov && isTRUE(input$use_covariates)) {
+      updateCheckboxInput(session, "use_covariates", value = FALSE)
     }
   })
   
-  subsetted1 = bindCache(
+  # --- Reactives ---
+  lung_actual_sf <- bindCache(
     reactive({
-      req(input$year1, input$cod)
-      mortality_data |> filter(Year == input$year1 & ICD10DG == input$cod)
+      req(input$data_select == LUNG, input$actual_predicted == 1)
+      
+      dat <- dplyr::filter(lung_cancer, Year == 2022)
+      
+      # If CRS missing, set ITM (EPSG:2157), then transform to WGS84 (EPSG:4326)
+      if (is.na(sf::st_crs(dat))) sf::st_crs(dat) <- 2157
+      dat <- dat |>
+        sf::st_make_valid() |>
+        sf::st_transform(4326) |>
+        sf::st_zm(drop = TRUE)
+      
+      validate(need("CsNmbrs" %in% names(dat),
+                    "Expected column 'CsNmbrs' in lung cancer data."))
+      dat
     }),
-    input$year1,
-    input$cod
+    input$data_select, input$actual_predicted
   )
   
-  subsetted2 = bindCache(
+  # Lung cancer AREAL predictions (SF with 'preds')
+  subsetted2 <- bindCache(
     reactive({
-      req(input$year2, input$parameter)
-      dsf |> filter(year == input$year2 & parameter == input$parameter & !is.na(value))
-    }),
-    input$year2,
-    input$parameter
-  )
-  
-  subsetted3 = bindCache(
-    reactive({
-      req(input$actual_predicted == 2)
-      req(input$year2, input$parameter, input$model)
-      if(input$model == "GAM"){
-        print("GAM")
-        #grid_df = grid_df |> mutate(year = as.numeric(input$year2))
-        #model = readRDS(file = paste0("models/gam/", input$parameter, "_model.rds"))
-        #grid_df$value = mgcv::predict.gam(model, newdata = grid_df)
-        #r <- rast(grid_df[, c("Longitude", "Latitude", "value")], type="xyz")
-        #crs(r) <- "EPSG:4326"
-        r = readRDS(file = paste0("rastors/gam/", input$parameter,"_", (input$year2),"_rastor.rds"))
-        return(r)
-      } else if(input$model == "FDAPDE") {
-        print("FDAPDE")
-        r = readRDS(file = paste0("rastors/fdapde/", input$parameter,"_", input$year2,"_rastor.rds"))
-        return(r)
-      } else if(input$model == "INLA") {
-        print("INLA")
-        r = readRDS(file = paste0("rastors/inla/", input$parameter,"_", input$year2,"_rastor.rds"))
-        return(r)
+      req(input$data_select == LUNG, input$actual_predicted == 2, input$model)
+      if(isTRUE(input$use_covariates)){
+        shp <- file.path("Output Files", "areal_outputs", tolower(input$model), "lungcancer_predictions_covariate_2022.shp")
+      } else {
+        shp <- file.path("Output Files", "areal_outputs", tolower(input$model), "lungcancer_predictions_2022.shp")
       }
-
+      validate(need(file.exists(shp), paste("Missing shapefile:", shp)))
+      st_read(shp, quiet = TRUE)
     }),
-    input$year2,
-    input$parameter,
-    input$model
+    input$data_select, input$actual_predicted, input$model, input$use_covariates
   )
   
-  subsetted4 = bindCache(
+  # Air quality prediction raster
+  subsetted3 <- bindCache(
     reactive({
-      req(input$year3, input$pollutant)
-      print(input$year3)
-      print(input$pollutant)
-      air_quality_sf = air_quality_sf |> filter(Year == input$year3 & `Air Pollutant` == input$pollutant & !is.na(value))
-      return(air_quality_sf)
+      req(input$data_select == AIR, input$actual_predicted == 2, input$pollutant, input$model)
+      r_path <- file.path("Output Files", "rastors", tolower(input$model),
+                          sprintf("%s_%d_rastor.rds", input$pollutant, 2022))
+      validate(need(file.exists(r_path), paste("Missing raster:", r_path)))
+      r <- readRDS(r_path)
+      if (inherits(r, "SpatRaster")) r <- raster::raster(r)
+      r
     }),
-    input$year3,
+    input$data_select, input$actual_predicted, input$pollutant, input$model
+  )
+  
+  # Air quality actual points (sf)
+  subsetted4 <- bindCache(
+    reactive({
+      req(input$pollutant)
+      aq <- air_quality_sf |>
+        dplyr::filter(Year == 2022, `Air Pollutant` == input$pollutant, !is.na(value))
+      validate(need(nrow(aq) > 0, "No air-quality points for this pollutant (2022)."))
+      aq
+    }),
     input$pollutant
   )
   
-  output$map = renderLeaflet({
-    if (input$data_select == 1) {
-      pal = colorNumeric(palette = "YlOrRd", domain = subsetted1()$VALUE)
-      l = leaflet(subsetted1()) |> 
-        addTiles()
-      l = l |> addPolygons(
-        color = "white",
-        fillColor = ~pal(VALUE),
-        fillOpacity = input$slider,
-        label = ~paste(ArofRsd, ":", VALUE),
-        weight = 2,
-        highlightOptions = highlightOptions(bringToFront = TRUE, weight = 4, color = "white")
-      )
-      l = l |> addLegend(pal = pal, values = ~VALUE, opacity = input$slider)
-      l
-    }
-    else if(input$data_select == 2) {
-      if (input$actual_predicted == 1){
-        pal = colorNumeric(palette = "viridis", domain = abs(subsetted2()$value))
-        l = leaflet(subsetted2()) |> addTiles() |>
-          addCircles(lng = st_coordinates(subsetted2())[, 1],
-                     lat = st_coordinates(subsetted2())[, 2],
-                     radius = abs(subsetted2()$value)/max(abs(subsetted2()$value), na.rm = TRUE)*5000,
-                     color = ~pal(abs(subsetted2()$value)), popup = ~paste(AreaOfResidence, ":", subsetted2()$value)) |>
-          addLegend(pal = pal, values = ~value)
-        l
-      } else {
-        rb <- raster::brick(subsetted3())
-        contours <- rasterToContour(rb, levels = pretty(range(values(rb), na.rm = TRUE), n = 10))
-        contours_sf <- st_as_sf(contours)
+  # --- helpers ---
+  base_map <- function() {
+    leaflet(options = leafletOptions(minZoom = 4)) |>
+      addProviderTiles(providers$CartoDB.Positron) |>
+      setView(lng = -8, lat = 53.2, zoom = 6)
+  }
+  
+  # --- render ---
+  output$map <- renderLeaflet({
+    m <- base_map()
+    
+    if (input$data_select == LUNG) {
+      if (input$actual_predicted == 1) {
+        dat  <- lung_actual_sf()   # already WGS84
+        vals <- dat$CsNmbrs
+        rng  <- range(vals, na.rm = TRUE)
         
-        pal <- colorNumeric("viridis", values(subsetted3()),
-                            na.color = "transparent")
-        leaflet() %>% addTiles() %>%
-          addRasterImage(rb, colors = pal, opacity = 0.8) %>%
-          #addPolylines(data = contours_sf, color = "black", weight = 1, opacity = 0.7) %>%
-          addLegend(pal = pal, values = values(subsetted3()), title = input$parameter)
+        # log-scale colors (continuous)
+        pal_log <- colorNumeric("YlOrRd", domain = log1p(rng), na.color = "transparent")
+        
+        # pick a name column if present
+        name_col <- intersect(c("ArofRsd", "County", "NAME"), names(dat))
+        nm <- if (length(name_col)) dat[[name_col[1]]] else rep("", nrow(dat))
+        
+        m |>
+          addPolygons(
+            data = dat,
+            weight = 1, color = "white",
+            fillOpacity = input$slider,
+            fillColor = ~pal_log(log1p(CsNmbrs)),
+            # 👇 this shows on hover
+            label = ~sprintf("%s: %s", nm, scales::comma(CsNmbrs)),
+            labelOptions = labelOptions(
+              direction = "auto", textsize = "12px", opacity = 0.9,
+              style = list(
+                "background-color" = "rgba(255,255,255,0.85)",
+                "padding"          = "3px 6px",
+                "border-radius"    = "4px",
+                "box-shadow"       = "0 1px 3px rgba(0,0,0,0.2)"
+              )
+            ),
+            # 👇 this makes the polygon react on hover
+            highlightOptions = highlightOptions(
+              weight = 2, color = "#333", bringToFront = TRUE
+            )
+          ) |>
+          addLegend(
+            "topright",
+            pal     = pal_log,
+            values  = log1p(vals),
+            title   = "Lung cancer (observed)",
+            opacity = 1,
+            labFormat = labelFormat(transform = expm1, digits = 0, big.mark = ",")
+          )
+      } else {
+        pred <- subsetted2() |> sf::st_transform(4326) |> sf::st_zm(drop = TRUE)
+        req(nrow(pred) > 0)
+        validate(need("preds" %in% names(pred), "Expected 'preds' column missing."))
+        
+        vals <- pred$preds
+        rng  <- range(vals, na.rm = TRUE)
+        
+        pal_log <- colorNumeric("YlOrRd", domain = log1p(rng), na.color = "transparent")
+        
+        name_col <- intersect(c("ArofRsd", "County", "NAME"), names(pred))
+        nm <- if (length(name_col)) pred[[name_col[1]]] else rep("", nrow(pred))
+        
+        m |>
+          addPolygons(
+            data = pred,
+            weight = 1, color = "white",
+            fillOpacity = input$slider,
+            fillColor = ~pal_log(log1p(preds)),
+            # 👇 this shows on hover
+            label = ~sprintf("%s: %s", nm, scales::comma(preds)),
+            labelOptions = labelOptions(
+              direction = "auto", textsize = "12px", opacity = 0.9,
+              style = list(
+                "background-color" = "rgba(255,255,255,0.85)",
+                "padding"          = "3px 6px",
+                "border-radius"    = "4px",
+                "box-shadow"       = "0 1px 3px rgba(0,0,0,0.2)"
+              )
+            ),
+            # 👇 this makes the polygon react on hover
+            highlightOptions = highlightOptions(
+              weight = 2, color = "#333", bringToFront = TRUE
+            )
+          ) |>
+          addLegend(
+            "topright",
+            pal     = pal_log,
+            values  = log1p(vals),
+            title   = "Lung cancer (observed)",
+            opacity = 1,
+            labFormat = labelFormat(transform = expm1, digits = 0, big.mark = ",")
+          )
       }
-    } 
-    else if(input$data_select == 3){
-      print(subsetted4())
-      pal = colorNumeric(palette = "viridis", domain = abs(subsetted4()$`value`))
-      l = leaflet(subsetted4()) |> addTiles() |>
-        addCircles(lng = st_coordinates(subsetted4())[, 1],
-                   lat = st_coordinates(subsetted4())[, 2],
-                   radius = abs(subsetted4()$`value`)/max(abs(subsetted4()$`value`), na.rm = TRUE)*5000,
-                   color = ~pal(abs(subsetted4()$`value`)), popup = ~paste(`Air Quality Station Name`, ":", subsetted4()$`value`)) |>
-        addLegend(pal = pal, values = ~`value`)
-      l
+      
+    } else if (input$data_select == AIR) {
+      if (input$actual_predicted == 1) {
+        pts <- subsetted4()
+        pal <- colorNumeric("viridis", pts$value, na.color = "transparent")
+        m |>
+          addCircleMarkers(
+            data = pts, radius = 5, stroke = FALSE,
+            fillOpacity = input$slider, fillColor = ~pal(value),
+            label = ~sprintf("%s: %.2f", `Air Quality Station Name`, value)
+          ) |>
+          addLegend("topright", pal = pal, values = pts$value,
+                    title = paste0(input$pollutant, " (2022)"), opacity = 1)
+      } else {
+        r <- subsetted3()
+        rng <- range(values(r), na.rm = TRUE)
+        pal <- colorNumeric("viridis", rng, na.color = "transparent")
+        m |>
+          addRasterImage(r, colors = pal, opacity = input$slider, project = TRUE) |>
+          addLegend("topright", pal = pal, values = rng,
+                    title = paste(input$model, input$pollutant, "2022"), opacity = 1)
+      }
     }
-
+    
   })
 }
 shinyApp(ui, server)

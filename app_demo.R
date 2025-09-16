@@ -20,7 +20,7 @@ library(stars)
 lung_cancer_sf = st_read("Counties/shapefiles/lungcancer.shp")
 lung_cancer_sf = lung_cancer_sf |> filter(Year == 2022)
 
-air_quality_data = read_csv("Air Quality data/air_quality_data_complete.csv")
+air_quality_data = read_csv("Data files/Air Quality data/air_quality_data_complete.csv")
 air_quality_data = air_quality_data |> filter(Year == 2022 & `Air Pollutant` == "PM10") |> na.omit()
 air_quality_sf = st_as_sf(air_quality_data, coords = c("Longitude", "Latitude"))
 st_crs(air_quality_sf) = 4326
@@ -61,11 +61,11 @@ server = function(input, output, session) {
       m2 <- mapview(lung_cancer_sf, zcol = "value", map.types = "CartoDB.Positron")
     } else {
       if(input$model == "GAM"){
-        r = readRDS(file = paste0("rastors/gam/PM10_2022_rastor.rds"))
-        lung_cancer_pred_sf = st_read("areal_outputs/gam/lungcancer_predictions.shp")
+        r = readRDS(file = paste0("Output Files/rastors/gam/PM10_2022_rastor.rds"))
+        lung_cancer_pred_sf = st_read("Output Files/areal_outputs/gam/lungcancer_predictions.shp")
       } else if (input$model == "FDAPDE") {
-        r = readRDS(file = paste0("rastors/fdapde/PM10_2022_rastor.rds"))
-        lung_cancer_pred_sf = st_read("areal_outputs/fdapde/lungcancer_predictions.shp")
+        r = readRDS(file = paste0("Output Files/rastors/fdapde/PM10_2022_rastor.rds"))
+        lung_cancer_pred_sf = st_read("Output Files/areal_outputs/fdapde/lungcancer_predictions.shp")
       }
       m1 <- mapview(r, map.types = "CartoDB.Positron")
       m2 <- mapview(lung_cancer_pred_sf, zcol = "preds", map.types = "CartoDB.Positron")
